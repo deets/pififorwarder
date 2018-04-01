@@ -1,0 +1,3 @@
+[submodule "modules/openadk"]
+	path = modules/openadk
+	url = git@github.com:deets/openadk.git
