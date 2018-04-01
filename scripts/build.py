@@ -7,6 +7,10 @@ def remove_file_if_exists(path):
     if os.path.exists(path):
         os.remove(path)
 
+def select_tasks(*tasks):
+    return "\\|".join(tasks)
+
+
 def main():
     openadk_dir = os.path.join(
         os.path.dirname(__file__),
@@ -30,7 +34,7 @@ def main():
 
     cmd = [
         "make",
-        "ADK_APPLIANCE={}".format("pififorward"),
+        "ADK_APPLIANCE={}".format(select_tasks("piforward", "deets")),
         "defconfig"
     ]
     env = {}
@@ -45,6 +49,7 @@ def main():
     env["ADK_TARGET_SYSTEM_RASPBERRY_PI3"] = "y"
     env["ADK_TARGET_SYSTEM"] ="raspberry-pi3"
     subprocess.check_call(cmd, cwd=openadk_dir, env=env)
+    subprocess.check_call(["make", "ADK_VERBOSE=1"], cwd=openadk_dir)
 
 
 if __name__ == '__main__':
