@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 import os
 import subprocess
+import argparse
+
+import common
 
 def remove_file_if_exists(path):
     if os.path.exists(path):
@@ -11,19 +14,20 @@ def select_tasks(*tasks):
     return "\\|".join(tasks)
 
 
+def commandline_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--verbose", action="store_true", default=False)
+    return parser.parse_args()
+
+
+def check_call(cmd, *args, **kwargs):
+    print(" ".join(cmd))
+    subprocess.check_call(cmd, *args, **kwargs)
+
+
 def main():
-    openadk_dir = os.path.join(
-        os.path.dirname(__file__),
-        "..", "modules", "openadk",
-    )
-    assert os.path.exists(openadk_dir), openadk_dir
-    config_dir = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "..", "config",
-        )
-    )
-    assert os.path.exists(config_dir), config_dir
+    args = commandline_arguments()
+    config_dir, openadk_dir = common.base_directories()
 
     task_dir = os.path.join(config_dir, "tasks")
     assert os.path.exists(task_dir), task_dir
@@ -34,22 +38,33 @@ def main():
 
     cmd = [
         "make",
-        "ADK_APPLIANCE={}".format(select_tasks("piforward", "deets")),
+        "ADK_APPLIANCE={}".format(select_tasks("pififorward", "deets")),
         "defconfig"
     ]
     env = {}
     env.update(os.environ)
-    env["ADK_VERBOSE"] = "1"
     env["ADK_CUSTOM_TASKS_DIR"] = task_dir
     env["ADK_TARGET_ARCH"] = "arm"
     env["ADK_TARGET_ARCH_ARM"] = "y"
     env["ADK_TARGET_LINUX_ARCH_ARM"] = "y"
     env["ADK_TARGET_OS_LINUX"] = "y"
     env["ADK_TARGET_OS"] ="linux"
+    env["ADK_TARGET_LIBC"] = "glibc"
     env["ADK_TARGET_SYSTEM_RASPBERRY_PI3"] = "y"
     env["ADK_TARGET_SYSTEM"] ="raspberry-pi3"
-    subprocess.check_call(cmd, cwd=openadk_dir, env=env)
-    subprocess.check_call(["make", "ADK_VERBOSE=1"], cwd=openadk_dir)
+
+    if args.verbose:
+        cmd.append("ADK_VERBOSE=1")
+
+    check_call(cmd, cwd=openadk_dir, env=env)
+    # always clean this to guarantee changes in
+    # things like network settings etc
+    # are picked up
+    check_call(["make", "package=base-files", "clean"], cwd=openadk_dir)
+    cmd = ["make"]
+    if args.verbose:
+        cmd.append("ADK_VERBOSE=1")
+    check_call(cmd, cwd=openadk_dir)
 
 
 if __name__ == '__main__':
